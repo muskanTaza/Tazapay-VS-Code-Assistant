@@ -1,9 +1,9 @@
 "use strict";
 /**
- * TazaPay MCP Integration Extension
+ * TazaPay Integration Extension
  *
- * This extension integrates TazaPay's Model Context Protocol (MCP) services with VS Code,
- * providing a chat participant for GitHub Copilot and various MCP tools for payment processing.
+ * This extension integrates TazaPay's services with VS Code,
+ * providing a chat participant for GitHub Copilot and various tools for payment processing.
  *
  * Features:
  * - @tazapay chat participant in GitHub Copilot
@@ -49,23 +49,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
-const mcpClient_1 = require("./mcpClient");
-const mcpTreeProvider_1 = require("./mcpTreeProvider");
+const client_1 = require("./client");
+const treeProvider_1 = require("./treeProvider");
 const ragClient_1 = require("./ragClient");
 const welcomeView_1 = require("./welcomeView");
 // Global extension state variables
-let mcpClient = null; // MCP client for API communication
-let mcpTreeProvider; // Tree view provider for MCP tools
+let tazaPayClient = null; // TazaPay client for API communication
+let tazaPayTreeProvider; // Tree view provider for TazaPay tools
 let ragClient; // RAG client for documentation queries
 /**
  * Extension activation function - called when the extension is activated
  * Sets up all providers, commands, and chat participants
  */
 function activate(context) {
-    console.log('TazaPay MCP Integration extension is now active!');
-    // Initialize the MCP tree provider for displaying tools in the sidebar
-    mcpTreeProvider = new mcpTreeProvider_1.MCPTreeProvider();
-    vscode.window.registerTreeDataProvider('tazapayMcpTools', mcpTreeProvider);
+    console.log('TazaPay Integration extension is now active!');
+    // Initialize the TazaPay tree provider for displaying tools in the sidebar
+    tazaPayTreeProvider = new treeProvider_1.TazaPayTreeProvider();
+    vscode.window.registerTreeDataProvider('tazapayMcpTools', tazaPayTreeProvider);
     // Initialize the RAG client for documentation queries
     ragClient = new ragClient_1.TazaPayRAGClient();
     // Register the welcome view provider for the extension's main interface
@@ -116,14 +116,14 @@ function activate(context) {
             // Add contextual follow-up buttons based on the user's question
             if (userMessage.toLowerCase().includes('payment') || userMessage.toLowerCase().includes('api')) {
                 stream.button({
-                    command: 'tazapay-mcp.generateCode',
+                    command: 'tazapay.generateCode',
                     title: '📝 Generate Code Example',
                     arguments: []
                 });
             }
             if (userMessage.toLowerCase().includes('webhook')) {
                 stream.button({
-                    command: 'tazapay-mcp.listTools',
+                    command: 'tazapay.listTools',
                     title: '🔗 View Webhook Tools',
                     arguments: []
                 });
@@ -262,11 +262,11 @@ I can help with TazaPay's payment and escrow services. Try asking about:
     };
     context.subscriptions.push(chatParticipant);
     // Welcome view command
-    const showWelcomeCommand = vscode.commands.registerCommand('tazapay-mcp.showWelcome', () => {
+    const showWelcomeCommand = vscode.commands.registerCommand('tazapay.showWelcome', () => {
         vscode.commands.executeCommand('tazapayMcpWelcome.focus');
     });
     // Open Copilot Chat command (similar to Stripe's "Ask a question")
-    const openCopilotChatCommand = vscode.commands.registerCommand('tazapay-mcp.openCopilotChat', async () => {
+    const openCopilotChatCommand = vscode.commands.registerCommand('tazapay.openCopilotChat', async () => {
         try {
             // Try to open Copilot Chat with @tazapay pre-filled
             await vscode.commands.executeCommand('workbench.action.chat.open', {
@@ -313,13 +313,13 @@ I can help with TazaPay's payment and escrow services. Try asking about:
         }
     });
     // Authentication command
-    const authenticateCommand = vscode.commands.registerCommand('tazapay-mcp.authenticate', async () => {
-        const config = vscode.workspace.getConfiguration('tazapay-mcp');
+    const authenticateCommand = vscode.commands.registerCommand('tazapay.authenticate', async () => {
+        const config = vscode.workspace.getConfiguration('tazapay');
         const serverUrl = config.get('serverUrl');
         let secretKey = config.get('secretKey');
         if (!secretKey) {
             const input = await vscode.window.showInputBox({
-                prompt: 'Enter your MCP Secret Key',
+                prompt: 'Enter your TazaPay Secret Key',
                 password: true,
                 ignoreFocusOut: true
             });
@@ -334,14 +334,14 @@ I can help with TazaPay's payment and escrow services. Try asking about:
             vscode.window.showErrorMessage('Secret key is required');
             return;
         }
-        mcpClient = new mcpClient_1.MCPClient(finalServerUrl, secretKey);
+        tazaPayClient = new client_1.TazaPayClient(finalServerUrl, secretKey);
         try {
-            const authenticated = await mcpClient.authenticate();
+            const authenticated = await tazaPayClient.authenticate();
             if (authenticated) {
-                vscode.window.showInformationMessage('Successfully authenticated with MCP service');
+                vscode.window.showInformationMessage('Successfully authenticated with TazaPay service');
                 // Fetch and display tools
-                const tools = await mcpClient.getTools();
-                mcpTreeProvider.updateTools(tools);
+                const tools = await tazaPayClient.getTools();
+                tazaPayTreeProvider.updateTools(tools);
             }
             else {
                 vscode.window.showErrorMessage('Authentication failed. Please check your secret key.');
@@ -352,13 +352,13 @@ I can help with TazaPay's payment and escrow services. Try asking about:
         }
     });
     // List tools command
-    const listToolsCommand = vscode.commands.registerCommand('tazapay-mcp.listTools', async () => {
-        if (!mcpClient || !mcpClient.isConnected()) {
+    const listToolsCommand = vscode.commands.registerCommand('tazapay.listTools', async () => {
+        if (!tazaPayClient || !tazaPayClient.isConnected()) {
             vscode.window.showWarningMessage('Please authenticate first');
             return;
         }
         try {
-            const tools = await mcpClient.getTools();
+            const tools = await tazaPayClient.getTools();
             const toolsText = tools.map(tool => `${tool.name}: ${tool.description}`).join('\n');
             const doc = await vscode.workspace.openTextDocument({
                 content: `Available MCP Tools:\n\n${toolsText}`,
@@ -371,8 +371,8 @@ I can help with TazaPay's payment and escrow services. Try asking about:
         }
     });
     // Execute tool command
-    const executeToolCommand = vscode.commands.registerCommand('tazapay-mcp.executeTool', async (tool) => {
-        if (!mcpClient || !mcpClient.isConnected()) {
+    const executeToolCommand = vscode.commands.registerCommand('tazapay.executeTool', async (tool) => {
+        if (!tazaPayClient || !tazaPayClient.isConnected()) {
             vscode.window.showWarningMessage('Please authenticate first');
             return;
         }
@@ -395,7 +395,7 @@ I can help with TazaPay's payment and escrow services. Try asking about:
                 vscode.window.showErrorMessage('Invalid JSON format for parameters');
                 return;
             }
-            const result = await mcpClient.executeTool(tool.name, parameters);
+            const result = await tazaPayClient.executeTool(tool.name, parameters);
             // Show result in a new document
             const doc = await vscode.workspace.openTextDocument({
                 content: `Tool: ${tool.name}\nParameters: ${JSON.stringify(parameters, null, 2)}\n\nResult:\n${JSON.stringify(result, null, 2)}`,
@@ -408,13 +408,13 @@ I can help with TazaPay's payment and escrow services. Try asking about:
         }
     });
     // Ask documentation question command
-    const askQuestionCommand = vscode.commands.registerCommand('tazapay-mcp.askQuestion', async () => {
-        if (!mcpClient || !mcpClient.isConnected()) {
+    const askQuestionCommand = vscode.commands.registerCommand('tazapay.askQuestion', async () => {
+        if (!tazaPayClient || !tazaPayClient.isConnected()) {
             vscode.window.showWarningMessage('Please authenticate first');
             return;
         }
         const question = await vscode.window.showInputBox({
-            prompt: 'Ask a question about the MCP service documentation',
+            prompt: 'Ask a question about the TazaPay service documentation',
             placeHolder: 'How do I use the payment API?',
             ignoreFocusOut: true
         });
@@ -422,7 +422,7 @@ I can help with TazaPay's payment and escrow services. Try asking about:
             return;
         }
         try {
-            const answer = await mcpClient.askDocumentationQuestion(question);
+            const answer = await tazaPayClient.askDocumentationQuestion(question);
             const doc = await vscode.workspace.openTextDocument({
                 content: `Question: ${question}\n\nAnswer:\n${answer}`,
                 language: 'markdown'
@@ -434,12 +434,12 @@ I can help with TazaPay's payment and escrow services. Try asking about:
         }
     });
     // Generate integration code command
-    const generateCodeCommand = vscode.commands.registerCommand('tazapay-mcp.generateCode', async () => {
-        if (!mcpClient || !mcpClient.isConnected()) {
+    const generateCodeCommand = vscode.commands.registerCommand('tazapay.generateCode', async () => {
+        if (!tazaPayClient || !tazaPayClient.isConnected()) {
             vscode.window.showWarningMessage('Please authenticate first');
             return;
         }
-        const tools = mcpClient.getAvailableTools();
+        const tools = tazaPayClient.getAvailableTools();
         if (tools.length === 0) {
             vscode.window.showWarningMessage('No tools available');
             return;
@@ -470,7 +470,7 @@ function generateIntegrationCode(tool) {
 
 const axios = require('axios');
 
-class MCPIntegration {
+class TazaPayIntegration {
     constructor(serverUrl, secretKey) {
         this.serverUrl = serverUrl;
         this.secretKey = secretKey;
@@ -497,10 +497,10 @@ class MCPIntegration {
 }
 
 // Usage example:
-const mcp = new MCPIntegration('YOUR_SERVER_URL', 'YOUR_SECRET_KEY');
+const tazapay = new TazaPayIntegration('YOUR_SERVER_URL', 'YOUR_SECRET_KEY');
 
 // Call the tool
-mcp.${tool.name}({
+tazapay.${tool.name}({
     // Add your parameters here based on the tool's requirements
     // Parameters: ${JSON.stringify(tool.parameters, null, 4)}
 }).then(result => {
@@ -511,6 +511,6 @@ mcp.${tool.name}({
 `;
 }
 function deactivate() {
-    mcpClient = null;
+    tazaPayClient = null;
 }
 //# sourceMappingURL=extension.js.map

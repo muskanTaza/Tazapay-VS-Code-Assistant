@@ -13,7 +13,7 @@
  */
 
 import * as vscode from 'vscode';
-import { TazaPayTool } from './mcpClient';
+import { TazaPayTool } from './client';
 
 /**
  * Individual tree item representing a TazaPay tool in the explorer

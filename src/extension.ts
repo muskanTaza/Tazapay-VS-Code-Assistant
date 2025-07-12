@@ -13,8 +13,8 @@
  */
 
 import * as vscode from 'vscode';
-import { TazaPayClient, TazaPayTool } from './mcpClient';
-import { TazaPayTreeProvider } from './mcpTreeProvider';
+import { TazaPayClient, TazaPayTool } from './client';
+import { TazaPayTreeProvider } from './treeProvider';
 import { TazaPayRAGClient } from './ragClient';
 import { WelcomeViewProvider } from './welcomeView';
 

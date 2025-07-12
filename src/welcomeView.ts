@@ -263,7 +263,7 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
         ...mcpConfig,
         servers: {
           ...((mcpConfig as any).servers || {}),
-          "Tazapay-mcp-Server": {
+          "Tazapay-Docker-Server": {
             command: "docker",
             description: "MCP server to integrate Tazapay API's and payments solutions.",
             args: [
@@ -291,9 +291,9 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
       const config = vscode.workspace.getConfiguration();
       const mcpConfig = config.get('mcp') || {};
       
-      if ((mcpConfig as any).servers && (mcpConfig as any).servers['Tazapay-mcp-Server']) {
+      if ((mcpConfig as any).servers && (mcpConfig as any).servers['Tazapay-Docker-Server']) {
         const updatedServers = { ...(mcpConfig as any).servers };
-        delete updatedServers['Tazapay-mcp-Server'];
+        delete updatedServers['Tazapay-Docker-Server'];
         
         const updatedMcpConfig = {
           ...mcpConfig,

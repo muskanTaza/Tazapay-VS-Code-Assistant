@@ -257,7 +257,7 @@ class WelcomeViewProvider {
                 ...mcpConfig,
                 servers: {
                     ...(mcpConfig.servers || {}),
-                    "Tazapay-mcp-Server": {
+                    "Tazapay-Docker-Server": {
                         command: "docker",
                         description: "MCP server to integrate Tazapay API's and payments solutions.",
                         args: [
@@ -283,9 +283,9 @@ class WelcomeViewProvider {
         try {
             const config = vscode.workspace.getConfiguration();
             const mcpConfig = config.get('mcp') || {};
-            if (mcpConfig.servers && mcpConfig.servers['Tazapay-mcp-Server']) {
+            if (mcpConfig.servers && mcpConfig.servers['Tazapay-Docker-Server']) {
                 const updatedServers = { ...mcpConfig.servers };
-                delete updatedServers['Tazapay-mcp-Server'];
+                delete updatedServers['Tazapay-Docker-Server'];
                 const updatedMcpConfig = {
                     ...mcpConfig,
                     servers: updatedServers

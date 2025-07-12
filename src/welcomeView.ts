@@ -1,5 +1,5 @@
 /**
- * Welcome View Provider for TazaPay MCP Integration
+ * Welcome View Provider for TazaPay Integration
  * 
  * This class manages the main welcome/setup view that appears in the sidebar.
  * It provides:
@@ -165,11 +165,11 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
 
   private async _authenticateWithSecretKey(secretKey: string) {
     try {
-      const config = vscode.workspace.getConfiguration('tazapay-mcp');
+      const config = vscode.workspace.getConfiguration('tazapay');
       await config.update('secretKey', secretKey, vscode.ConfigurationTarget.Global);
       
       // Trigger authentication - this will show its own success/error messages
-      await vscode.commands.executeCommand('tazapay-mcp.authenticate');
+      await vscode.commands.executeCommand('tazapay.authenticate');
       
       // Save authentication state
       await this._context.globalState.update('tazapay.isAuthenticated', true);
@@ -201,7 +201,7 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
     }
     
     try {
-      const config = vscode.workspace.getConfiguration('tazapay-mcp');
+      const config = vscode.workspace.getConfiguration('tazapay');
       await config.update('secretKey', undefined, vscode.ConfigurationTarget.Global);
       
       // Clear authentication state
@@ -252,7 +252,7 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-    <title>TazaPay MCP Welcome</title>
+    <title>TazaPay Welcome</title>
     <style>
         body {
             font-family: var(--vscode-font-family);

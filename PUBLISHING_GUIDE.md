@@ -1,7 +1,7 @@
-# TazaPay MCP Extension Publishing Guide
+# TazaPay Extension Publishing Guide
 
 ## 📦 Current Status
-✅ Extension packaged successfully as `tazapay-mcp-1.2.0.vsix`
+✅ Extension packaged successfully as `tazapay-1.2.0.vsix`
 ✅ **NEW**: Welcome view with AI assistant button and secret key input
 ✅ GitHub Copilot Chat integration with `@tazapay` assistant
 ✅ Ready for distribution and publication
@@ -20,7 +20,7 @@ vsce publish
 ```
 
 ### Option 2: Private Distribution
-- Share the `tazapay-mcp-1.2.0.vsix` file directly with customers
+- Share the `tazapay-1.2.0.vsix` file directly with customers
 - Customers install via: `Extensions → ... → Install from VSIX`
 
 ### Option 3: GitHub Releases
@@ -57,7 +57,7 @@ vsce publish
 ## 🧪 Testing
 To test the packaged extension:
 ```bash
-code --install-extension tazapay-mcp-1.2.0.vsix
+code --install-extension tazapay-1.2.0.vsix
 ```
 
 Then in VS Code:
@@ -80,6 +80,6 @@ Then in VS Code:
 - **Instant Help**: Get TazaPay documentation and examples immediately
 
 ## 📞 Support
-- Repository: https://github.com/tazapay/tazapay-mcp-extension
-- Issues: https://github.com/tazapay/tazapay-mcp-extension/issues
+- Repository: https://github.com/tazapay/tazapay-extension
+- Issues: https://github.com/tazapay/tazapay-extension/issues
 - Homepage: https://tazapay.com

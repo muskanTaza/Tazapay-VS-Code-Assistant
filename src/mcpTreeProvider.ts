@@ -1,43 +1,43 @@
 /**
- * MCP Tree Provider for VS Code Explorer Panel
+ * TazaPay Tree Provider for VS Code Explorer Panel
  * 
  * This module provides a tree view in the VS Code explorer for displaying and managing
- * TazaPay MCP tools. Users can see available tools, their descriptions, and execute them
+ * TazaPay tools. Users can see available tools, their descriptions, and execute them
  * directly from the sidebar interface.
  * 
  * Features:
- * - Tree view display of available MCP tools
+ * - Tree view display of available TazaPay tools
  * - Click-to-execute functionality for tools
  * - Real-time updates when tools are refreshed
  * - Tooltip descriptions for each tool
  */
 
 import * as vscode from 'vscode';
-import { MCPTool } from './mcpClient';
+import { TazaPayTool } from './mcpClient';
 
 /**
- * Individual tree item representing an MCP tool in the explorer
+ * Individual tree item representing a TazaPay tool in the explorer
  * Each item displays the tool name, description, and provides execution capability
  */
-export class MCPTreeItem extends vscode.TreeItem {
+export class TazaPayTreeItem extends vscode.TreeItem {
   /**
-   * Create a new tree item for displaying an MCP tool
+   * Create a new tree item for displaying a TazaPay tool
    * @param label - Display name for the tree item
    * @param description - Description shown in tooltip
-   * @param tool - Optional MCPTool object for executable items
+   * @param tool - Optional TazaPayTool object for executable items
    * @param collapsibleState - Whether item can be expanded/collapsed
    */
   constructor(
     public readonly label: string,
     public readonly description: string,
-    public readonly tool?: MCPTool,
+    public readonly tool?: TazaPayTool,
     public readonly collapsibleState?: vscode.TreeItemCollapsibleState
   ) {
     super(label, collapsibleState);
     this.tooltip = description;
     // Set up click command for tool execution (only for tools, not categories)
     this.command = tool ? {
-      command: 'tazapay-mcp.executeTool',
+      command: 'tazapay.executeTool',
       title: 'Execute Tool',
       arguments: [tool]
     } : undefined;
@@ -45,15 +45,15 @@ export class MCPTreeItem extends vscode.TreeItem {
 }
 
 /**
- * Tree data provider for the MCP tools view in VS Code explorer
- * Manages the display and interaction with TazaPay MCP tools in the sidebar
+ * Tree data provider for the TazaPay tools view in VS Code explorer
+ * Manages the display and interaction with TazaPay tools in the sidebar
  */
-export class MCPTreeProvider implements vscode.TreeDataProvider<MCPTreeItem> {
+export class TazaPayTreeProvider implements vscode.TreeDataProvider<TazaPayTreeItem> {
   // Event emitter for notifying VS Code when tree data changes
-  private _onDidChangeTreeData: vscode.EventEmitter<MCPTreeItem | undefined | null | void> = new vscode.EventEmitter<MCPTreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<MCPTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: vscode.EventEmitter<TazaPayTreeItem | undefined | null | void> = new vscode.EventEmitter<TazaPayTreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<TazaPayTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-  private tools: MCPTool[] = [];  // Cached list of available tools
+  private tools: TazaPayTool[] = [];  // Cached list of available tools
 
   constructor() {}
 
@@ -68,9 +68,9 @@ export class MCPTreeProvider implements vscode.TreeDataProvider<MCPTreeItem> {
   /**
    * Update the list of available tools and refresh the tree view
    * Called when authentication completes and tools are fetched from server
-   * @param tools - Array of MCP tools to display
+   * @param tools - Array of TazaPay tools to display
    */
-  updateTools(tools: MCPTool[]): void {
+  updateTools(tools: TazaPayTool[]): void {
     this.tools = tools;
     this.refresh();
   }
@@ -81,7 +81,7 @@ export class MCPTreeProvider implements vscode.TreeDataProvider<MCPTreeItem> {
    * @param element - Tree item to get display info for
    * @returns The tree item for VS Code to display
    */
-  getTreeItem(element: MCPTreeItem): vscode.TreeItem {
+  getTreeItem(element: TazaPayTreeItem): vscode.TreeItem {
     return element;
   }
 
@@ -91,11 +91,11 @@ export class MCPTreeProvider implements vscode.TreeDataProvider<MCPTreeItem> {
    * @param element - Parent element (undefined for root level)
    * @returns Promise resolving to array of child items
    */
-  getChildren(element?: MCPTreeItem): Thenable<MCPTreeItem[]> {
+  getChildren(element?: TazaPayTreeItem): Thenable<TazaPayTreeItem[]> {
     if (!element) {
       // Root level - show all tools as non-collapsible items
       return Promise.resolve(this.tools.map(tool => 
-        new MCPTreeItem(tool.name, tool.description, tool, vscode.TreeItemCollapsibleState.None)
+        new TazaPayTreeItem(tool.name, tool.description, tool, vscode.TreeItemCollapsibleState.None)
       ));
     }
 

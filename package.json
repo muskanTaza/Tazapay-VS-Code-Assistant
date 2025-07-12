@@ -1,7 +1,7 @@
 {
-  "name": "tazapay-mcp",
-  "displayName": "TazaPay MCP Integration",
-  "description": "Integrate with TazaPay MCP services and access TazaPay's AI assistant directly in GitHub Copilot Chat using @tazapay",
+  "name": "tazapay",
+  "displayName": "TazaPay Integration",
+  "description": "Integrate with TazaPay services and access TazaPay's AI assistant directly in GitHub Copilot Chat using @tazapay",
   "version": "1.2.0",
   "publisher": "tazapay",
   "icon": "icon.png",
@@ -16,7 +16,6 @@
   ],
   "keywords": [
     "tazapay",
-    "mcp",
     "payments",
     "api",
     "integration",
@@ -32,10 +31,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tazapay/tazapay-mcp-extension"
+    "url": "https://github.com/tazapay/tazapay-extension"
   },
   "bugs": {
-    "url": "https://github.com/tazapay/tazapay-mcp-extension/issues"
+    "url": "https://github.com/tazapay/tazapay-extension/issues"
   },
   "homepage": "https://tazapay.com",
   "license": "MIT",
@@ -46,64 +45,64 @@
   "contributes": {
     "commands": [
       {
-        "command": "tazapay-mcp.authenticate",
-        "title": "TazaPay MCP: Authenticate with Secret Key"
+        "command": "tazapay.authenticate",
+        "title": "TazaPay: Authenticate with Secret Key"
       },
       {
-        "command": "tazapay-mcp.listTools",
-        "title": "TazaPay MCP: List Available Tools"
+        "command": "tazapay.listTools",
+        "title": "TazaPay: List Available Tools"
       },
       {
-        "command": "tazapay-mcp.askQuestion",
-        "title": "TazaPay MCP: Ask Documentation Question"
+        "command": "tazapay.askQuestion",
+        "title": "TazaPay: Ask Documentation Question"
       },
       {
-        "command": "tazapay-mcp.generateCode",
-        "title": "TazaPay MCP: Generate Integration Code"
+        "command": "tazapay.generateCode",
+        "title": "TazaPay: Generate Integration Code"
       },
       {
-        "command": "tazapay-mcp.showWelcome",
-        "title": "TazaPay MCP: Welcome",
+        "command": "tazapay.showWelcome",
+        "title": "TazaPay: Welcome",
         "icon": "$(home)"
       },
       {
-        "command": "tazapay-mcp.openCopilotChat",
-        "title": "TazaPay MCP: Open AI Assistant"
+        "command": "tazapay.openCopilotChat",
+        "title": "TazaPay: Open AI Assistant"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "tazapay-mcp.authenticate",
+          "command": "tazapay.authenticate",
           "when": "true"
         },
         {
-          "command": "tazapay-mcp.listTools",
-          "when": "tazapay-mcp.authenticated"
+          "command": "tazapay.listTools",
+          "when": "tazapay.authenticated"
         },
         {
-          "command": "tazapay-mcp.askQuestion",
-          "when": "tazapay-mcp.authenticated"
+          "command": "tazapay.askQuestion",
+          "when": "tazapay.authenticated"
         },
         {
-          "command": "tazapay-mcp.generateCode",
-          "when": "tazapay-mcp.authenticated"
+          "command": "tazapay.generateCode",
+          "when": "tazapay.authenticated"
         }
       ]
     },
     "views": {
-      "tazapay-mcp-explorer": [
+      "tazapay-explorer": [
         {
           "id": "tazapayMcpWelcome",
           "name": "Welcome",
           "type": "webview",
           "icon": "$(home)",
-          "when": "!tazapay-mcp.authenticated"
+          "when": "!tazapay.authenticated"
         },
         {
           "id": "tazapayMcpTools",
-          "name": "TazaPay MCP Tools",
-          "when": "tazapay-mcp.authenticated",
+          "name": "TazaPay Tools",
+          "when": "tazapay.authenticated",
           "icon": "$(plug)"
         }
       ]
@@ -111,23 +110,23 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "tazapay-mcp-explorer",
-          "title": "TazaPay MCP Integration",
+          "id": "tazapay-explorer",
+          "title": "TazaPay Integration",
           "icon": "./activity-icon.svg"
         }
       ]
     },
     "configuration": {
-      "title": "TazaPay MCP Integration",
+      "title": "TazaPay Integration",
       "properties": {
-        "tazapay-mcp.serverUrl": {
+        "tazapay.serverUrl": {
           "type": "string",
           "default": "https://api.tazapay.com",
-          "description": "TazaPay MCP Server URL"
+          "description": "TazaPay Server URL"
         },
-        "tazapay-mcp.secretKey": {
+        "tazapay.secretKey": {
           "type": "string",
-          "description": "Your TazaPay MCP Secret Key"
+          "description": "Your TazaPay Secret Key"
         }
       }
     },

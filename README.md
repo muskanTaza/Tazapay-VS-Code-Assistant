@@ -1,6 +1,6 @@
-# TazaPay MCP Integration
+# TazaPay Integration
 
-A Visual Studio Code extension for seamlessly integrating with TazaPay's MCP (Model Context Protocol) services. Authenticate with your secret key, discover available tools, and get instant help from TazaPay's AI assistant directly in GitHub Copilot Chat using `@tazapay`.
+A Visual Studio Code extension for seamlessly integrating with TazaPay's services. Authenticate with your secret key, discover available tools, and get instant help from TazaPay's AI assistant directly in GitHub Copilot Chat using `@tazapay`.
 
 ## 🚀 New: GitHub Copilot Integration
 
@@ -28,7 +28,7 @@ Type `@tazapay` in GitHub Copilot Chat to instantly access TazaPay's AI assistan
 ### From VS Code Marketplace
 1. Open VS Code
 2. Go to Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`)
-3. Search for "TazaPay MCP Integration"
+3. Search for "TazaPay Integration"
 4. Click Install
 5. **Welcome view opens automatically** with quick setup options
 
@@ -42,7 +42,7 @@ Type `@tazapay` in GitHub Copilot Chat to instantly access TazaPay's AI assistan
 
 ### 1. Welcome View (New!)
 
-After installation, the **TazaPay MCP Welcome** view opens automatically in your sidebar with:
+After installation, the **TazaPay** view opens automatically in your sidebar with:
 
 - **🤖 AI Assistant Button** - Click to open GitHub Copilot Chat with `@tazapay` ready
 - **🔐 Secret Key Input** - Enter your TazaPay secret key to unlock advanced tools
@@ -66,12 +66,12 @@ The easiest way to get help with TazaPay! No authentication required.
 
 **Option A: Via Welcome View (Recommended)**
 1. Enter your secret key in the welcome view textbox
-2. Click "🔓 Authenticate & Enable Tools"
+2. Click "Authenticate & Enable Tools"
 3. Tools will be available in the TazaPay MCP Tools sidebar
 
 **Option B: Via Command Palette**
 1. Open VS Code Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-2. Run command: `TazaPay MCP: Authenticate with Secret Key`
+2. Run command: `TazaPay: Authenticate with Secret Key`
 3. Enter your TazaPay secret key when prompted
 4. The extension will connect to TazaPay's MCP service
 
@@ -81,20 +81,20 @@ Update your VS Code settings if using a custom endpoint:
 
 ```json
 {
-  "tazapay-mcp.serverUrl": "https://your-custom-endpoint.com/api"
+  "tazapay.serverUrl": "https://your-custom-endpoint.com/api"
 }
 ```
 
 ### 5. Available Commands
 
-- `TazaPay MCP: Authenticate with Secret Key` - Connect to TazaPay MCP service
-- `TazaPay MCP: List Available Tools` - View all available tools
-- `TazaPay MCP: Ask Documentation Question` - Query TazaPay documentation using RAG
-- `TazaPay MCP: Generate Integration Code` - Generate code templates
+- `TazaPay: Authenticate with Secret Key` - Connect to TazaPay service
+- `TazaPay: List Available Tools` - View all available tools
+- `TazaPay: Ask Documentation Question` - Query TazaPay documentation using RAG
+- `TazaPay: Generate Integration Code` - Generate code templates
 
 ### 6. Using Tools
 
-1. After authentication, view tools in the TazaPay MCP Tools sidebar
+1. After authentication, view tools in the TazaPay Tools sidebar
 2. Click on any tool to execute it
 3. Enter parameters in JSON format when prompted
 4. View results in a new editor tab
@@ -103,12 +103,12 @@ Update your VS Code settings if using a custom endpoint:
 
 This extension contributes the following settings:
 
-- `tazapay-mcp.serverUrl`: TazaPay MCP Server URL (default: `https://api.tazapay.com`)
-- `tazapay-mcp.secretKey`: Your TazaPay MCP Secret Key (stored securely)
+- `tazapay.serverUrl`: TazaPay Server URL (default: `https://api.tazapay.com`)
+- `tazapay.secretKey`: Your TazaPay Secret Key (stored securely)
 
 ## API Integration
 
-The extension expects your MCP service to provide these endpoints:
+The extension expects your service to provide these endpoints:
 
 - `POST /auth` - Authentication with secret key
 - `GET /tools` - List available tools

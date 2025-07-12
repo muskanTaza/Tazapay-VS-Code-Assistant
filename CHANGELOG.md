@@ -1,6 +1,6 @@
 # Change Log
 
-All notable changes to the "tazapay-mcp" extension will be documented in this file.
+All notable changes to the "tazapay" extension will be documented in this file.
 
 ## [1.2.0] - 2024-07-11
 
@@ -27,7 +27,7 @@ All notable changes to the "tazapay-mcp" extension will be documented in this fi
 ## [1.0.0] - 2024-07-11
 
 ### Added
-- Initial release with MCP integration
+- Initial release with TazaPay integration
 - Secret key authentication
 - Tool discovery and execution
 - Documentation assistant

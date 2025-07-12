@@ -28,7 +28,7 @@ convert icon.svg -resize 128x128 icon.png
 
 ## After Creating icon.png
 1. Rebuild: `npm run compile && vsce package`
-2. Reinstall: `code --uninstall-extension tazapay.tazapay-mcp && code --install-extension tazapay-mcp-1.2.0.vsix`
+2. Reinstall: `code --uninstall-extension tazapay.tazapay && code --install-extension tazapay-1.2.0.vsix`
 3. Your TazaPay icon will appear in VS Code!
 
 ## File Requirements

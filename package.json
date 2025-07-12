@@ -121,7 +121,7 @@
       "properties": {
         "tazapay.serverUrl": {
           "type": "string",
-          "default": "https://api.tazapay.com",
+          "default": "https://aaba8e7a84a1.ngrok-free.app",
           "description": "TazaPay Server URL"
         },
         "tazapay.secretKey": {

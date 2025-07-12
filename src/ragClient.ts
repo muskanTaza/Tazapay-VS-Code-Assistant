@@ -15,6 +15,7 @@
 
 import axios from 'axios';
 import * as vscode from 'vscode';
+import { TAZAPAY_CONFIG } from './constants';
 
 /**
  * Client for querying TazaPay's documentation using RAG technology
@@ -29,7 +30,7 @@ export class TazaPayRAGClient {
    */
   constructor() {
     const config = vscode.workspace.getConfiguration('tazapay-mcp');
-    this.baseUrl = config.get<string>('serverUrl') || 'https://api.tazapay.com';
+    this.baseUrl = config.get<string>('serverUrl') || TAZAPAY_CONFIG.DEFAULT_SERVER_URL;
   }
 
   /**

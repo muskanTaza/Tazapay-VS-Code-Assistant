@@ -17,6 +17,7 @@ import { TazaPayClient, TazaPayTool } from './client';
 import { TazaPayTreeProvider } from './treeProvider';
 import { TazaPayRAGClient } from './ragClient';
 import { WelcomeViewProvider } from './welcomeView';
+import { TAZAPAY_CONFIG } from './constants';
 
 // Global extension state variables
 let tazaPayClient: TazaPayClient | null = null;  // TazaPay client for API communication
@@ -322,7 +323,7 @@ I can help with TazaPay's payment and escrow services. Try asking about:
 			await config.update('secretKey', input, vscode.ConfigurationTarget.Global);
 		}
 
-		const finalServerUrl = serverUrl || 'https://api.tazapay.com';
+		const finalServerUrl = serverUrl || TAZAPAY_CONFIG.DEFAULT_SERVER_URL;
 
 		if (!secretKey) {
 			vscode.window.showErrorMessage('Secret key is required');

@@ -53,6 +53,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TazaPayRAGClient = void 0;
 const axios_1 = __importDefault(require("axios"));
 const vscode = __importStar(require("vscode"));
+const constants_1 = require("./constants");
 /**
  * Client for querying TazaPay's documentation using RAG technology
  * Provides intelligent responses to developer questions about TazaPay integration
@@ -64,7 +65,7 @@ class TazaPayRAGClient {
      */
     constructor() {
         const config = vscode.workspace.getConfiguration('tazapay-mcp');
-        this.baseUrl = config.get('serverUrl') || 'https://api.tazapay.com';
+        this.baseUrl = config.get('serverUrl') || constants_1.TAZAPAY_CONFIG.DEFAULT_SERVER_URL;
     }
     /**
      * Query TazaPay's RAG system with a natural language question

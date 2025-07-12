@@ -10,6 +10,7 @@
  */
 
 import * as vscode from 'vscode';
+import { TAZAPAY_CONFIG } from './constants';
 
 export class WelcomeViewProvider implements vscode.WebviewViewProvider {
   private _webviewView?: vscode.WebviewView;  // Reference to the webview for messaging
@@ -82,11 +83,11 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
    */
   private _showChatInstructions() {
     // Check if user has seen instructions before (for better UX)
-    const hasSeenInstructions = this._context.globalState.get('tazapay.hasSeenChatInstructions', false);
+    const hasSeenInstructions = this._context.globalState.get(TAZAPAY_CONFIG.STATE_KEYS.HAS_SEEN_CHAT_INSTRUCTIONS, false);
     
     if (!hasSeenInstructions) {
       // First time - show instructions
-      this._context.globalState.update('tazapay.hasSeenChatInstructions', true);
+      this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.HAS_SEEN_CHAT_INSTRUCTIONS, true);
       
       const message = `
 🤖 **TazaPay AI Assistant Setup**
@@ -154,7 +155,7 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
               'Reset Instructions'
             ).then(selection => {
               if (selection === 'Reset Instructions') {
-                this._context.globalState.update('tazapay.hasSeenChatInstructions', false);
+                this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.HAS_SEEN_CHAT_INSTRUCTIONS, false);
               }
             });
           }
@@ -175,9 +176,9 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
       await vscode.commands.executeCommand('tazapay.authenticate');
       
       // Save authentication state
-      await this._context.globalState.update('tazapay.isAuthenticated', true);
-      await this._context.globalState.update('tazapay.maskedKey', this._maskSecretKey(secretKey));
-      await this._context.globalState.update('tazapay.maskedApiKey', this._maskSecretKey(apiKey));
+      await this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.IS_AUTHENTICATED, true);
+      await this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.MASKED_KEY, this._maskSecretKey(secretKey));
+      await this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.MASKED_API_KEY, this._maskSecretKey(apiKey));
       
       // Send success message back to webview to reset button state (no duplicate message)
       this._sendMessageToWebview('authenticationResult', { 
@@ -213,9 +214,9 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
       await config.update('secretKey', undefined, vscode.ConfigurationTarget.Global);
       
       // Clear authentication state
-      await this._context.globalState.update('tazapay.isAuthenticated', false);
-      await this._context.globalState.update('tazapay.maskedKey', undefined);
-      await this._context.globalState.update('tazapay.maskedApiKey', undefined);
+      await this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.IS_AUTHENTICATED, false);
+      await this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.MASKED_KEY, undefined);
+      await this._context.globalState.update(TAZAPAY_CONFIG.STATE_KEYS.MASKED_API_KEY, undefined);
       
       // Send deletion confirmation to webview
       this._sendMessageToWebview('keyDeleted', {});
@@ -228,9 +229,9 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async _sendCurrentAuthState() {
-    const isAuthenticated = this._context.globalState.get('tazapay.isAuthenticated', false);
-    const maskedKey = this._context.globalState.get('tazapay.maskedKey', '');
-    const maskedApiKey = this._context.globalState.get('tazapay.maskedApiKey', '');
+    const isAuthenticated = this._context.globalState.get(TAZAPAY_CONFIG.STATE_KEYS.IS_AUTHENTICATED, false);
+    const maskedKey = this._context.globalState.get(TAZAPAY_CONFIG.STATE_KEYS.MASKED_KEY, '');
+    const maskedApiKey = this._context.globalState.get(TAZAPAY_CONFIG.STATE_KEYS.MASKED_API_KEY, '');
     
     this._sendMessageToWebview('loadAuthState', {
       authenticated: isAuthenticated,
@@ -263,18 +264,18 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
         ...mcpConfig,
         servers: {
           ...((mcpConfig as any).servers || {}),
-          "Tazapay-Docker-Server": {
+          [TAZAPAY_CONFIG.MCP_SERVER_NAME]: {
             command: "docker",
             description: "MCP server to integrate Tazapay API's and payments solutions.",
             args: [
               "run", "--rm", "-i",
-              "-e", "TAZAPAY_API_KEY",
-              "-e", "TAZAPAY_API_SECRET",
-              "tazapay/tazapay-mcp-server:latest"
+              "-e", TAZAPAY_CONFIG.ENV_VARS.API_KEY,
+              "-e", TAZAPAY_CONFIG.ENV_VARS.API_SECRET,
+              TAZAPAY_CONFIG.MCP_DOCKER_IMAGE
             ],
             env: {
-              TAZAPAY_API_KEY: apiKey,
-              TAZAPAY_API_SECRET: secretKey
+              [TAZAPAY_CONFIG.ENV_VARS.API_KEY]: apiKey,
+              [TAZAPAY_CONFIG.ENV_VARS.API_SECRET]: secretKey
             }
           }
         }
@@ -291,9 +292,9 @@ export class WelcomeViewProvider implements vscode.WebviewViewProvider {
       const config = vscode.workspace.getConfiguration();
       const mcpConfig = config.get('mcp') || {};
       
-      if ((mcpConfig as any).servers && (mcpConfig as any).servers['Tazapay-Docker-Server']) {
+      if ((mcpConfig as any).servers && (mcpConfig as any).servers[TAZAPAY_CONFIG.MCP_SERVER_NAME]) {
         const updatedServers = { ...(mcpConfig as any).servers };
-        delete updatedServers['Tazapay-Docker-Server'];
+        delete updatedServers[TAZAPAY_CONFIG.MCP_SERVER_NAME];
         
         const updatedMcpConfig = {
           ...mcpConfig,

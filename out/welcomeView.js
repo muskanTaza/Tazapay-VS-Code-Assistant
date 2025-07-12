@@ -76,10 +76,10 @@ class WelcomeViewProvider {
                     this._showChatInstructions();
                     break;
                 case 'authenticate':
-                    // Handle authentication request with secret key
-                    const secretKey = message.secretKey;
-                    if (secretKey) {
-                        this._authenticateWithSecretKey(secretKey);
+                    // Handle authentication request with API key and secret key
+                    const { apiKey, secretKey } = message;
+                    if (apiKey && secretKey) {
+                        this._authenticateWithCredentials(apiKey, secretKey);
                     }
                     break;
                 case 'deleteKey':
@@ -179,8 +179,10 @@ class WelcomeViewProvider {
             }
         }
     }
-    async _authenticateWithSecretKey(secretKey) {
+    async _authenticateWithCredentials(apiKey, secretKey) {
         try {
+            // Update VS Code settings.json with MCP server configuration
+            await this._updateMCPServerConfig(apiKey, secretKey);
             const config = vscode.workspace.getConfiguration('tazapay');
             await config.update('secretKey', secretKey, vscode.ConfigurationTarget.Global);
             // Trigger authentication - this will show its own success/error messages
@@ -188,10 +190,12 @@ class WelcomeViewProvider {
             // Save authentication state
             await this._context.globalState.update('tazapay.isAuthenticated', true);
             await this._context.globalState.update('tazapay.maskedKey', this._maskSecretKey(secretKey));
+            await this._context.globalState.update('tazapay.maskedApiKey', this._maskSecretKey(apiKey));
             // Send success message back to webview to reset button state (no duplicate message)
             this._sendMessageToWebview('authenticationResult', {
                 success: true,
-                maskedKey: this._maskSecretKey(secretKey)
+                maskedKey: this._maskSecretKey(secretKey),
+                maskedApiKey: this._maskSecretKey(apiKey)
             });
         }
         catch (error) {
@@ -201,30 +205,35 @@ class WelcomeViewProvider {
     }
     async _deleteSecretKey() {
         // Show confirmation dialog
-        const confirmation = await vscode.window.showWarningMessage('Are you sure you want to delete the saved TazaPay secret key?', { modal: true }, 'Delete', 'Cancel');
+        const confirmation = await vscode.window.showWarningMessage('Are you sure you want to delete the saved TazaPay credentials and MCP server configuration?', { modal: true }, 'Delete', 'Cancel');
         if (confirmation !== 'Delete') {
             return; // User cancelled
         }
         try {
+            // Remove MCP server configuration from settings.json
+            await this._removeMCPServerConfig();
             const config = vscode.workspace.getConfiguration('tazapay');
             await config.update('secretKey', undefined, vscode.ConfigurationTarget.Global);
             // Clear authentication state
             await this._context.globalState.update('tazapay.isAuthenticated', false);
             await this._context.globalState.update('tazapay.maskedKey', undefined);
+            await this._context.globalState.update('tazapay.maskedApiKey', undefined);
             // Send deletion confirmation to webview
             this._sendMessageToWebview('keyDeleted', {});
-            vscode.window.showInformationMessage('Secret key deleted successfully.');
+            vscode.window.showInformationMessage('Credentials deleted successfully.');
         }
         catch (error) {
-            vscode.window.showErrorMessage(`Failed to delete secret key: ${error}`);
+            vscode.window.showErrorMessage(`Failed to delete credentials: ${error}`);
         }
     }
     async _sendCurrentAuthState() {
         const isAuthenticated = this._context.globalState.get('tazapay.isAuthenticated', false);
         const maskedKey = this._context.globalState.get('tazapay.maskedKey', '');
+        const maskedApiKey = this._context.globalState.get('tazapay.maskedApiKey', '');
         this._sendMessageToWebview('loadAuthState', {
             authenticated: isAuthenticated,
-            maskedKey: maskedKey
+            maskedKey: maskedKey,
+            maskedApiKey: maskedApiKey
         });
     }
     _maskSecretKey(secretKey) {
@@ -238,6 +247,54 @@ class WelcomeViewProvider {
     _sendMessageToWebview(command, data) {
         if (this._webviewView) {
             this._webviewView.webview.postMessage({ command, ...data });
+        }
+    }
+    async _updateMCPServerConfig(apiKey, secretKey) {
+        try {
+            const config = vscode.workspace.getConfiguration();
+            const mcpConfig = config.get('mcp') || {};
+            const updatedMcpConfig = {
+                ...mcpConfig,
+                servers: {
+                    ...(mcpConfig.servers || {}),
+                    "Tazapay-mcp-Server": {
+                        command: "docker",
+                        description: "MCP server to integrate Tazapay API's and payments solutions.",
+                        args: [
+                            "run", "--rm", "-i",
+                            "-e", "TAZAPAY_API_KEY",
+                            "-e", "TAZAPAY_API_SECRET",
+                            "tazapay/tazapay-mcp-server:latest"
+                        ],
+                        env: {
+                            TAZAPAY_API_KEY: apiKey,
+                            TAZAPAY_API_SECRET: secretKey
+                        }
+                    }
+                }
+            };
+            await config.update('mcp', updatedMcpConfig, vscode.ConfigurationTarget.Global);
+        }
+        catch (error) {
+            throw new Error(`Failed to update MCP server configuration: ${error}`);
+        }
+    }
+    async _removeMCPServerConfig() {
+        try {
+            const config = vscode.workspace.getConfiguration();
+            const mcpConfig = config.get('mcp') || {};
+            if (mcpConfig.servers && mcpConfig.servers['Tazapay-mcp-Server']) {
+                const updatedServers = { ...mcpConfig.servers };
+                delete updatedServers['Tazapay-mcp-Server'];
+                const updatedMcpConfig = {
+                    ...mcpConfig,
+                    servers: updatedServers
+                };
+                await config.update('mcp', updatedMcpConfig, vscode.ConfigurationTarget.Global);
+            }
+        }
+        catch (error) {
+            throw new Error(`Failed to remove MCP server configuration: ${error}`);
         }
     }
     _getHtmlForWebview(webview) {
@@ -399,7 +456,18 @@ class WelcomeViewProvider {
     <div class="section">        
         <p>Unlock powerful MCP tools by authenticating</p>
         
+        <div class="input-group">
+            <label>API Key</label>
+            <input 
+                type="password" 
+                id="apiKey" 
+                placeholder="Enter your TazaPay API key..."
+                autocomplete="off"
+            >
+        </div>
+        
         <div class="input-group">         
+            <label>Secret Key</label>
             <div class="key-input-container">
                 <input 
                     type="password" 
@@ -455,11 +523,13 @@ class WelcomeViewProvider {
         let isAuthenticated = false;
 
         function authenticate() {
+            const apiKeyInput = document.getElementById('apiKey');
             const secretKeyInput = document.getElementById('secretKey');
             const authenticateBtn = document.getElementById('authenticateBtn');
+            const apiKey = apiKeyInput.value.trim();
             const secretKey = secretKeyInput.value.trim();
             
-            if (!secretKey) {
+            if (!apiKey || !secretKey) {
                 return; // Button should be disabled anyway
             }
             
@@ -469,6 +539,7 @@ class WelcomeViewProvider {
             
             vscode.postMessage({
                 command: 'authenticate',
+                apiKey: apiKey,
                 secretKey: secretKey
             });
         }
@@ -479,7 +550,8 @@ class WelcomeViewProvider {
             });
         }
 
-        function updateUIState(authenticated = false, maskedKey = '') {
+        function updateUIState(authenticated = false, maskedKey = '', maskedApiKey = '') {
+            const apiKeyInput = document.getElementById('apiKey');
             const secretKeyInput = document.getElementById('secretKey');
             const authenticateBtn = document.getElementById('authenticateBtn');
             const deleteKeyBtn = document.getElementById('deleteKeyBtn');
@@ -489,16 +561,21 @@ class WelcomeViewProvider {
             
             if (authenticated) {
                 // Authenticated state
+                apiKeyInput.value = maskedApiKey;
                 secretKeyInput.value = maskedKey;
+                apiKeyInput.disabled = true;
                 secretKeyInput.disabled = true;
                 authenticateBtn.style.display = 'none';
                 deleteKeyBtn.style.display = 'inline-block';
-                keyStatus.textContent = '✅ Secret key saved and authenticated';
+                keyStatus.textContent = '✅ Credentials saved and MCP server configured';
                 keyStatus.style.color = 'var(--vscode-testing-iconPassed)';
             } else {
                 // Unauthenticated state
+                apiKeyInput.value = '';
                 secretKeyInput.value = '';
+                apiKeyInput.disabled = false;
                 secretKeyInput.disabled = false;
+                apiKeyInput.placeholder = 'Enter your TazaPay API key...';
                 secretKeyInput.placeholder = 'Enter your TazaPay secret key...';
                 authenticateBtn.style.display = 'inline-block';
                 authenticateBtn.textContent = 'Authenticate & Enable Tools';
@@ -514,11 +591,13 @@ class WelcomeViewProvider {
         function updateButtonState() {
             if (isAuthenticated) return; // Don't update if authenticated
             
+            const apiKeyInput = document.getElementById('apiKey');
             const secretKeyInput = document.getElementById('secretKey');
             const authenticateBtn = document.getElementById('authenticateBtn');
-            const hasValue = secretKeyInput.value.trim().length > 0;
+            const hasApiKey = apiKeyInput.value.trim().length > 0;
+            const hasSecretKey = secretKeyInput.value.trim().length > 0;
             
-            authenticateBtn.disabled = !hasValue;
+            authenticateBtn.disabled = !hasApiKey || !hasSecretKey;
             if (!authenticateBtn.disabled) {
                 authenticateBtn.textContent = 'Authenticate & Enable Tools';
             }
@@ -533,7 +612,7 @@ class WelcomeViewProvider {
                 if (message.success) {
                     authenticateBtn.textContent = '✅ Authenticated!';
                     setTimeout(() => {
-                        updateUIState(true, message.maskedKey || '••••••••••••••••');
+                        updateUIState(true, message.maskedKey || '••••••••••••••••', message.maskedApiKey || '••••••••••••••••');
                     }, 1000);
                 } else {
                     authenticateBtn.textContent = '❌ Failed - Try Again';
@@ -544,7 +623,7 @@ class WelcomeViewProvider {
                 }
             } else if (message.command === 'loadAuthState') {
                 // Load saved authentication state on startup
-                updateUIState(message.authenticated, message.maskedKey || '••••••••••••••••');
+                updateUIState(message.authenticated, message.maskedKey || '••••••••••••••••', message.maskedApiKey || '••••••••••••••••');
             } else if (message.command === 'keyDeleted') {
                 // Reset to unauthenticated state after deletion
                 updateUIState(false);
@@ -562,10 +641,17 @@ class WelcomeViewProvider {
             // Add click listener for delete key button
             document.getElementById('deleteKeyBtn').addEventListener('click', deleteKey);
             
-            // Add input event listener for real-time validation
+            // Add input event listeners for real-time validation
+            document.getElementById('apiKey').addEventListener('input', updateButtonState);
             document.getElementById('secretKey').addEventListener('input', updateButtonState);
             
-            // Handle Enter key in secret key input
+            // Handle Enter key in both inputs
+            document.getElementById('apiKey').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !document.getElementById('authenticateBtn').disabled && !isAuthenticated) {
+                    authenticate();
+                }
+            });
+            
             document.getElementById('secretKey').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && !document.getElementById('authenticateBtn').disabled && !isAuthenticated) {
                     authenticate();

@@ -76,9 +76,9 @@ class TazaPayRAGClient {
     async queryRAG(question) {
         try {
             // Send question to TazaPay's public RAG endpoint
-            const response = await axios_1.default.post(`${this.baseUrl}/public/rag/query`, {
-                question: question,
-                source: 'vscode-copilot' // Identify requests from VS Code extension
+            const response = await axios_1.default.post(`${this.baseUrl}/process`, {
+                user_input: question,
+                // source: 'vscode-copilot'  // Identify requests from VS Code extension
             }, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ class TazaPayRAGClient {
                 },
                 timeout: 30000 // 30 second timeout for RAG queries
             });
-            return response.data.answer || 'I apologize, but I couldn\'t find a relevant answer to your question. Please try rephrasing your question or contact TazaPay support for more specific help.';
+            return response.data?.result?.answer || response || 'I apologize, but I couldn\'t find a relevant answer to your question. Please try rephrasing your question or contact TazaPay support for more specific help.';
         }
         catch (error) {
             console.error('RAG query failed:', error);

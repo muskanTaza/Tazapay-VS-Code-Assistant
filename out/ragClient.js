@@ -64,8 +64,9 @@ class TazaPayRAGClient {
      * Uses configured server URL or defaults to TazaPay's production API
      */
     constructor() {
-        const config = vscode.workspace.getConfiguration('tazapay-mcp');
+        const config = vscode.workspace.getConfiguration('tazapay');
         this.baseUrl = config.get('serverUrl') || constants_1.TAZAPAY_CONFIG.DEFAULT_SERVER_URL;
+        console.log('RAG Client initialized with baseUrl:', this.baseUrl);
     }
     /**
      * Query TazaPay's RAG system with a natural language question
@@ -75,10 +76,12 @@ class TazaPayRAGClient {
      */
     async queryRAG(question) {
         try {
+            console.log('RAG Client making request to:', `${this.baseUrl}/process`);
+            console.log('RAG Client query:', question);
             // Send question to TazaPay's public RAG endpoint
             const response = await axios_1.default.post(`${this.baseUrl}/process`, {
                 user_input: question,
-                // source: 'vscode-copilot'  // Identify requests from VS Code extension
+                source: 'vscode-copilot' // Identify requests from VS Code extension
             }, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,23 +89,88 @@ class TazaPayRAGClient {
                 },
                 timeout: 30000 // 30 second timeout for RAG queries
             });
-            return response.data?.result?.answer || response || 'I apologize, but I couldn\'t find a relevant answer to your question. Please try rephrasing your question or contact TazaPay support for more specific help.';
+            console.log('RAG Client response status:', response.status);
+            console.log('RAG Client response data:', response.data);
+            // Handle different response formats
+            if (response.data) {
+                // Try different possible response structures
+                if (response.data.result?.answer) {
+                    return response.data.result.answer;
+                }
+                if (response.data.answer) {
+                    return response.data.answer;
+                }
+                if (response.data.response) {
+                    return response.data.response;
+                }
+                if (typeof response.data === 'string') {
+                    return response.data;
+                }
+                if (response.data.message) {
+                    return response.data.message;
+                }
+            }
+            return 'I received a response from the TazaPay service, but couldn\'t parse the answer format. Please try rephrasing your question or contact TazaPay support for more specific help.';
         }
         catch (error) {
             console.error('RAG query failed:', error);
             // Provide specific error messages based on failure type
             if (axios_1.default.isAxiosError(error)) {
+                console.error('Axios error details:', {
+                    code: error.code,
+                    status: error.response?.status,
+                    statusText: error.response?.statusText,
+                    url: error.config?.url,
+                    method: error.config?.method
+                });
                 if (error.code === 'ECONNABORTED') {
-                    return 'The request timed out. Please try again or contact TazaPay support.';
+                    return `⏱️ **Request Timed Out**
+          
+The TazaPay RAG service didn't respond within 30 seconds. This might be due to:
+- Heavy server load
+- Network connectivity issues
+
+Please try again in a moment.`;
+                }
+                if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+                    return `🌐 **Connection Failed**
+          
+Could not connect to TazaPay RAG service at: \`${this.baseUrl}/process\`
+
+This might be because:
+- The server is not running
+- The URL is incorrect
+- Network connectivity issues
+
+Please check the server URL in your settings.`;
                 }
                 if (error.response?.status === 404) {
-                    return 'The RAG service is currently unavailable. Please try again later or contact TazaPay support.';
+                    return `🔍 **Service Not Found**
+          
+The RAG endpoint was not found at: \`${this.baseUrl}/process\`
+
+Please verify:
+- The server URL is correct
+- The RAG service is deployed and running
+- The endpoint path is correct`;
                 }
                 if (error.response?.status === 429) {
-                    return 'Too many requests. Please wait a moment and try again.';
+                    return '🚦 **Rate Limit Exceeded**\n\nToo many requests sent to the TazaPay service. Please wait a moment and try again.';
+                }
+                if (error.response?.status && error.response.status >= 500) {
+                    return `🔧 **Server Error**
+          
+The TazaPay RAG service encountered an internal error (${error.response.status}).
+
+Please try again later or contact TazaPay support if the issue persists.`;
                 }
             }
-            return 'I encountered an error while processing your question. Please try again or contact TazaPay support for assistance.';
+            return `❌ **Error Processing Request**
+      
+I encountered an unexpected error while processing your question:
+\`${error}\`
+
+Please try again or contact TazaPay support for assistance.`;
         }
     }
     /**
@@ -126,6 +194,32 @@ Try asking me things like:
 - "Show me a JavaScript integration example"
 
 What would you like to know about TazaPay?`;
+    }
+    /**
+     * Test the RAG service connectivity and response
+     * @returns Promise<boolean> - True if the service is working
+     */
+    async testConnection() {
+        try {
+            console.log('Testing RAG service connection...');
+            const testResponse = await this.queryRAG('Hello, test connection');
+            if (testResponse.includes('Connection Failed') || testResponse.includes('Service Not Found') || testResponse.includes('Error Processing Request')) {
+                return {
+                    working: false,
+                    message: testResponse
+                };
+            }
+            return {
+                working: true,
+                message: 'RAG service is responding correctly'
+            };
+        }
+        catch (error) {
+            return {
+                working: false,
+                message: `RAG service test failed: ${error}`
+            };
+        }
     }
 }
 exports.TazaPayRAGClient = TazaPayRAGClient;

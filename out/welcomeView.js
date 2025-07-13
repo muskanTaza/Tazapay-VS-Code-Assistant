@@ -184,15 +184,21 @@ class WelcomeViewProvider {
         try {
             // Update VS Code settings.json with MCP server configuration
             await this._updateMCPServerConfig(apiKey, secretKey);
+            // Save credentials to VS Code settings for fallback RAG usage
             const config = vscode.workspace.getConfiguration('tazapay');
             await config.update('secretKey', secretKey, vscode.ConfigurationTarget.Global);
-            // Trigger authentication - this will show its own success/error messages
-            await vscode.commands.executeCommand('tazapay.authenticate');
+            await config.update('apiKey', apiKey, vscode.ConfigurationTarget.Global);
             // Save authentication state
             await this._context.globalState.update(constants_1.TAZAPAY_CONFIG.STATE_KEYS.IS_AUTHENTICATED, true);
             await this._context.globalState.update(constants_1.TAZAPAY_CONFIG.STATE_KEYS.MASKED_KEY, this._maskSecretKey(secretKey));
             await this._context.globalState.update(constants_1.TAZAPAY_CONFIG.STATE_KEYS.MASKED_API_KEY, this._maskSecretKey(apiKey));
-            // Send success message back to webview to reset button state (no duplicate message)
+            // Notify user that MCP server is configured
+            vscode.window.showInformationMessage('TazaPay MCP server configured successfully! Tools are now available for @tazapay chat.', 'Restart VS Code').then(selection => {
+                if (selection === 'Restart VS Code') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+            // Send success message back to webview to reset button state
             this._sendMessageToWebview('authenticationResult', {
                 success: true,
                 maskedKey: this._maskSecretKey(secretKey),
@@ -200,7 +206,7 @@ class WelcomeViewProvider {
             });
         }
         catch (error) {
-            // Send error message back to webview to reset button state (extension command will show error)
+            // Send error message back to webview to reset button state
             this._sendMessageToWebview('authenticationResult', { success: false, error: String(error) });
         }
     }

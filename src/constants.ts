@@ -15,8 +15,8 @@ export const TAZAPAY_CONFIG = {
   /**
    * MCP Server configuration
    */
-  MCP_SERVER_NAME: 'Tazapay-Docker-Server',
-  MCP_DOCKER_IMAGE: 'tazapay/tazapay-mcp-server:latest',
+  MCP_SERVER_NAME: 'Tazapay-Local-Server',
+  MCP_DOCKER_IMAGE: 'tazapay-mcp-server:local',
   
   /**
    * Environment variable names for Docker container
@@ -31,7 +31,9 @@ export const TAZAPAY_CONFIG = {
    */
   CONFIG_KEYS: {
     SERVER_URL: 'tazapay.serverUrl',
-    SECRET_KEY: 'tazapay.secretKey'
+    API_KEY: 'tazapay.apiKey',
+    SECRET_KEY: 'tazapay.secretKey',
+    FORCE_AGENT_MODE: 'tazapay.forceAgentMode'
   },
   
   /**

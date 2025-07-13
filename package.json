@@ -68,6 +68,10 @@
       {
         "command": "tazapay.openCopilotChat",
         "title": "TazaPay: Open AI Assistant"
+      },
+      {
+        "command": "tazapay.testRAG",
+        "title": "TazaPay: Test RAG Service Connection"
       }
     ],
     "menus": {
@@ -124,9 +128,18 @@
           "default": "https://aaba8e7a84a1.ngrok-free.app",
           "description": "TazaPay Server URL"
         },
+        "tazapay.apiKey": {
+          "type": "string",
+          "description": "Your TazaPay API Key"
+        },
         "tazapay.secretKey": {
           "type": "string",
           "description": "Your TazaPay Secret Key"
+        },
+        "tazapay.forceAgentMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Always use MCP tools instead of RAG for @tazapay queries"
         }
       }
     },

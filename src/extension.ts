@@ -17,12 +17,14 @@ import { TazaPayClient, TazaPayTool } from './client';
 import { TazaPayTreeProvider } from './treeProvider';
 import { TazaPayRAGClient } from './ragClient';
 import { WelcomeViewProvider } from './welcomeView';
+import { TazaPayMCPClient } from './mcpClient';
 import { TAZAPAY_CONFIG } from './constants';
 
 // Global extension state variables
 let tazaPayClient: TazaPayClient | null = null;  // TazaPay client for API communication
 let tazaPayTreeProvider: TazaPayTreeProvider;    // Tree view provider for TazaPay tools
 let ragClient: TazaPayRAGClient;         // RAG client for documentation queries
+let mcpClient: TazaPayMCPClient;         // MCP client for TazaPay tools
 
 /**
  * Extension activation function - called when the extension is activated
@@ -37,6 +39,9 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	// Initialize the RAG client for documentation queries
 	ragClient = new TazaPayRAGClient();
+	
+	// Initialize the MCP client for TazaPay tools
+	mcpClient = new TazaPayMCPClient();
 
 	// Register the welcome view provider for the extension's main interface
 	const welcomeProvider = new WelcomeViewProvider(context.extensionUri, context);
@@ -58,35 +63,87 @@ export function activate(context: vscode.ExtensionContext) {
 		try {
 			const userMessage = request.prompt.trim();
 			
+			// Detect if we're in agent mode by checking the request context
+			const isAgentMode = detectAgentMode(request, context);
+			console.log(`TazaPay chat participant called. Agent mode: ${isAgentMode}, Message: "${userMessage}"`);
+			console.log('Request object:', JSON.stringify(request, null, 2));
+			console.log('Context object:', JSON.stringify(context, null, 2));
+			
 			// Show typing indicator while processing the request
-			stream.progress('Processing your TazaPay question...');
+			stream.progress(isAgentMode ? 
+				'Using TazaPay tools to process your request...' : 
+				'Searching TazaPay documentation...'
+			);
 			
 			let response: string;
 			
 			// Handle help requests or empty messages with a welcome message
 			if (!userMessage || userMessage.toLowerCase() === 'help') {
-				response = `
+				response = `# 🚀 TazaPay Assistant
 
+## ${isAgentMode ? '🔧 Agent Mode - Using MCP Tools' : '📚 Regular Mode - Using RAG Documentation'}
 
+${isAgentMode ? `
+**Agent Mode Active** - I can execute TazaPay operations for you!
+
+### 🛠️ Try these:
+- "Can you check my Tazapay balance"
+- "Create a payment for $100 USD"  
+- "Check payment status ABC123"
+- "List my recent transactions"
+
+### Available Tools:
+${(await getMCPToolsList()) || 'Loading tools...'}
+` : `
+**Regular Mode** - I'll search TazaPay documentation for you!
 
 ### 💡 Try asking:
+- "Can you check my Tazapay balance" (will search docs about balance checking)
 - "How do I create a payment?"
 - "What webhook events are available?"
 - "Show me a payment integration example"
-- "How does TazaPay escrow work?"
+`}
 
-*Note: For detailed technical support, visit [TazaPay Documentation](https://docs.tazapay.com)*`;
+*For detailed technical support, visit [TazaPay Documentation](https://docs.tazapay.com)*`;
 			} else {
 				try {
-					// Try to use the RAG client for intelligent responses
-					response = await ragClient.queryRAG(userMessage);
-				} catch (ragError) {
-					console.log('RAG client error, using fallback response:', ragError);
-					// Use fallback responses for common questions when RAG fails
+					// Use MCP tools only in agent mode, otherwise use RAG
+					if (isAgentMode) {
+						// Agent mode: Try to use MCP tools first
+						const mcpResponse = await tryMCPTools(userMessage);
+						if (mcpResponse) {
+							response = mcpResponse;
+						} else {
+							// If no relevant MCP tools found, inform user and suggest RAG mode
+							response = `🔧 **No relevant TazaPay tools found for your request.**
+
+I couldn't find any specific TazaPay tools to handle: "${userMessage}"
+
+**Available tools:**
+${(await getMCPToolsList()) || 'Loading tools...'}
+
+💡 **Tip:** For general questions about TazaPay, try asking without agent mode for documentation-based answers.`;
+						}
+					} else {
+						// Regular mode: Use RAG for documentation queries
+						console.log('Using RAG client for documentation query...');
+						response = await ragClient.queryRAG(userMessage);
+						console.log('RAG response received:', response.substring(0, 100) + '...');
+					}
+				} catch (error) {
+					console.log('MCP/RAG client error, using fallback response:', error);
+					// Use fallback responses for common questions when both MCP and RAG fail
 					response = getFallbackResponse(userMessage);
 				}
 			}
 			
+			// Add mode indicator for debugging
+			if (isAgentMode) {
+				response += '\n\n---\n*🔧 Agent mode - using MCP tools*';
+			} else {
+				response += '\n\n---\n*📚 Regular mode - using RAG documentation search*';
+			}
+
 			// Stream the response as markdown to the chat
 			stream.markdown(response);
 			
@@ -122,6 +179,190 @@ export function activate(context: vscode.ExtensionContext) {
 - @tazapay What are webhook events?`);
 		}
 	});
+
+	/**
+	 * Detect if Copilot is in agent mode
+	 * @param request - Chat request object
+	 * @param context - Chat context object
+	 * @returns boolean - True if in agent mode
+	 */
+	function detectAgentMode(request: any, context: any): boolean {
+		try {
+			// Method 1: Check if the request has agent-specific command
+			if (request.command && request.command !== '') {
+				console.log('Agent mode detected via request.command:', request.command);
+				return true;
+			}
+
+			// Method 2: Check VS Code configuration override
+			const config = vscode.workspace.getConfiguration('tazapay');
+			const forceAgentMode = config.get<boolean>('forceAgentMode', false);
+			console.log('forceAgentMode setting:', forceAgentMode);
+			if (forceAgentMode) {
+				console.log('Agent mode forced via configuration');
+				return true;
+			}
+
+			// Default to regular mode (use RAG)
+			console.log('Regular mode detected - using RAG for documentation queries');
+			return false;
+
+		} catch (error) {
+			console.error('Error detecting agent mode:', error);
+			// Default to regular mode on error
+			return false;
+		}
+	}
+
+	/**
+	 * Get a formatted list of available MCP tools
+	 * @returns Promise<string> - Formatted tools list
+	 */
+	async function getMCPToolsList(): Promise<string> {
+		try {
+			const isConfigured = await mcpClient.isConfigured();
+			if (!isConfigured) {
+				return 'MCP server not configured. Please set up your API credentials first.';
+			}
+
+			if (!mcpClient.getConnectionStatus()) {
+				await mcpClient.connect();
+			}
+
+			const tools = mcpClient.getTools();
+			if (tools.length === 0) {
+				return 'No tools available. The MCP server may still be starting up.';
+			}
+
+			return tools.map(tool => `• **${tool.name}**: ${tool.description}`).join('\n');
+		} catch (error) {
+			console.error('Error getting MCP tools list:', error);
+			return 'Error loading tools list.';
+		}
+	}
+
+	/**
+	 * Try to use MCP tools to handle the user's request
+	 * @param userMessage - The user's question/input
+	 * @returns Promise<string | null> - MCP tool response or null if no relevant tools found
+	 */
+	async function tryMCPTools(userMessage: string): Promise<string | null> {
+		try {
+			// Check if MCP client is configured
+			const isConfigured = await mcpClient.isConfigured();
+			if (!isConfigured) {
+				console.log('MCP client not configured, skipping...');
+				return null;
+			}
+
+			// Connect to MCP server if not already connected
+			if (!mcpClient.getConnectionStatus()) {
+				const connected = await mcpClient.connect();
+				if (!connected) {
+					console.log('Failed to connect to MCP server');
+					return null;
+				}
+			}
+
+			// Find relevant tools for the user's query
+			const relevantTools = mcpClient.findRelevantTools(userMessage);
+			
+			if (relevantTools.length === 0) {
+				console.log('No relevant MCP tools found for query');
+				return null;
+			}
+
+			// For now, use the first relevant tool
+			// In a more sophisticated implementation, we could:
+			// 1. Ask the user which tool to use if multiple are found
+			// 2. Use AI to determine the best tool and parameters
+			// 3. Chain multiple tools together
+			
+			const tool = relevantTools[0];
+			console.log(`Using MCP tool: ${tool.name}`);
+
+			// Try to extract parameters from the user message
+			// This is a simple implementation - in practice, you'd want more sophisticated parameter extraction
+			const parameters = extractParametersFromMessage(userMessage, tool);
+
+			// Execute the tool
+			const result = await mcpClient.executeTool(tool.name, parameters);
+
+			if (result.isError) {
+				return `❌ **Error using ${tool.name}:** ${result.content[0]?.text || 'Unknown error'}`;
+			}
+
+			// Format the response
+			const toolResponse = result.content.map(item => item.text || JSON.stringify(item)).join('\n');
+			
+			return `🔧 **Using TazaPay Tool: ${tool.name}**
+
+${tool.description}
+
+**Result:**
+${toolResponse}
+
+*This result was generated using TazaPay's MCP tools. For more complex operations, visit [TazaPay Dashboard](https://dashboard.tazapay.com)*`;
+
+		} catch (error) {
+			console.error('Error in tryMCPTools:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Extract parameters from user message for a given tool
+	 * This is a simple implementation - could be enhanced with NLP
+	 */
+	function extractParametersFromMessage(message: string, tool: any): any {
+		const lowerMessage = message.toLowerCase();
+		const parameters: any = {};
+
+		// Simple keyword extraction
+		if (tool.name.includes('payment')) {
+			// Look for amount
+			const amountMatch = message.match(/\$?(\d+(?:\.\d{2})?)/);
+			if (amountMatch) {
+				parameters.amount = parseFloat(amountMatch[1]);
+			}
+
+			// Look for currency
+			const currencyMatch = message.match(/\b(USD|EUR|GBP|SGD|AUD|CAD)\b/i);
+			if (currencyMatch) {
+				parameters.currency = currencyMatch[1].toUpperCase();
+			} else {
+				parameters.currency = 'USD'; // Default
+			}
+
+			// Look for description
+			if (lowerMessage.includes('for ')) {
+				const descMatch = message.match(/for (.+?)(?:\.|$)/i);
+				if (descMatch) {
+					parameters.description = descMatch[1].trim();
+				}
+			}
+		}
+
+		if (tool.name.includes('status') || tool.name.includes('payment')) {
+			// Look for payment ID
+			const idMatch = message.match(/\b([a-zA-Z0-9_-]{10,})\b/);
+			if (idMatch) {
+				parameters.payment_id = idMatch[1];
+			}
+		}
+
+		if (tool.name.includes('list')) {
+			// Look for limit
+			const limitMatch = message.match(/(\d+)\s+(?:transactions|payments|items)/i);
+			if (limitMatch) {
+				parameters.limit = parseInt(limitMatch[1]);
+			} else {
+				parameters.limit = 10; // Default
+			}
+		}
+
+		return parameters;
+	}
 
 	/**
 	 * Helper function to provide fallback responses when RAG client fails
@@ -302,45 +543,39 @@ I can help with TazaPay's payment and escrow services. Try asking about:
 		}
 	});
 
-	// Authentication command
+	// Authentication command - simplified to just show MCP status
 	const authenticateCommand = vscode.commands.registerCommand('tazapay.authenticate', async () => {
-		const config = vscode.workspace.getConfiguration('tazapay');
-		const serverUrl = config.get<string>('serverUrl');
-		let secretKey = config.get<string>('secretKey');
-
-		if (!secretKey) {
-			const input = await vscode.window.showInputBox({
-				prompt: 'Enter your TazaPay Secret Key',
-				password: true,
-				ignoreFocusOut: true
-			});
-
-			if (!input) {
-				return;
-			}
-
-			secretKey = input;
-			await config.update('secretKey', input, vscode.ConfigurationTarget.Global);
-		}
-
-		const finalServerUrl = serverUrl || TAZAPAY_CONFIG.DEFAULT_SERVER_URL;
-
-		if (!secretKey) {
-			vscode.window.showErrorMessage('Secret key is required');
-			return;
-		}
-
-		tazaPayClient = new TazaPayClient(finalServerUrl, secretKey);
-		
 		try {
-			const authenticated = await tazaPayClient.authenticate();
-			if (authenticated) {
-				vscode.window.showInformationMessage('Successfully authenticated with TazaPay service');
-				// Fetch and display tools
-				const tools = await tazaPayClient.getTools();
-				tazaPayTreeProvider.updateTools(tools);
+			const isConfigured = await mcpClient.isConfigured();
+			
+			if (isConfigured) {
+				// Try to connect to MCP server
+				const connected = await mcpClient.connect();
+				if (connected) {
+					const tools = mcpClient.getTools();
+					vscode.window.showInformationMessage(
+						`TazaPay MCP server connected! ${tools.length} tools available.`
+					);
+					
+					// Update tree provider with MCP tools
+					tazaPayTreeProvider.updateTools(tools.map(tool => ({
+						name: tool.name,
+						description: tool.description,
+						endpoint: '', // MCP tools don't use endpoints
+						parameters: tool.inputSchema
+					})));
+				} else {
+					vscode.window.showWarningMessage('Failed to connect to TazaPay MCP server. Please check your configuration.');
+				}
 			} else {
-				vscode.window.showErrorMessage('Authentication failed. Please check your secret key.');
+				vscode.window.showInformationMessage(
+					'TazaPay MCP server not configured. Please use the welcome view to set up your API credentials.',
+					'Open Welcome'
+				).then(selection => {
+					if (selection === 'Open Welcome') {
+						vscode.commands.executeCommand('tazapayMcpWelcome.focus');
+					}
+				});
 			}
 		} catch (error) {
 			vscode.window.showErrorMessage(`Authentication error: ${error}`);
@@ -349,17 +584,30 @@ I can help with TazaPay's payment and escrow services. Try asking about:
 
 	// List tools command
 	const listToolsCommand = vscode.commands.registerCommand('tazapay.listTools', async () => {
-		if (!tazaPayClient || !tazaPayClient.isConnected()) {
-			vscode.window.showWarningMessage('Please authenticate first');
-			return;
-		}
-
 		try {
-			const tools = await tazaPayClient.getTools();
-			const toolsText = tools.map(tool => `${tool.name}: ${tool.description}`).join('\n');
+			const isConfigured = await mcpClient.isConfigured();
+			if (!isConfigured) {
+				vscode.window.showWarningMessage('TazaPay MCP server not configured. Please set up your credentials first.');
+				return;
+			}
+
+			// Ensure connection
+			if (!mcpClient.getConnectionStatus()) {
+				await mcpClient.connect();
+			}
+
+			const tools = mcpClient.getTools();
+			if (tools.length === 0) {
+				vscode.window.showInformationMessage('No MCP tools available. The server may still be starting up.');
+				return;
+			}
+
+			const toolsText = tools.map(tool => 
+				`## ${tool.name}\n${tool.description}\n\n**Input Schema:**\n\`\`\`json\n${JSON.stringify(tool.inputSchema, null, 2)}\n\`\`\``
+			).join('\n\n---\n\n');
 			
 			const doc = await vscode.workspace.openTextDocument({
-				content: `Available MCP Tools:\n\n${toolsText}`,
+				content: `# Available TazaPay MCP Tools\n\n${toolsText}\n\n*These tools can be used via @tazapay in Copilot Chat*`,
 				language: 'markdown'
 			});
 			
@@ -479,6 +727,62 @@ I can help with TazaPay's payment and escrow services. Try asking about:
 		await vscode.window.showTextDocument(doc);
 	});
 
+	// Test RAG service command
+	const testRAGCommand = vscode.commands.registerCommand('tazapay.testRAG', async () => {
+		vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Testing TazaPay RAG Service...",
+			cancellable: false
+		}, async (progress) => {
+			try {
+				progress.report({ increment: 30, message: "Connecting to RAG service..." });
+				
+				const testResult = await ragClient.testConnection();
+				
+				progress.report({ increment: 70, message: "Processing response..." });
+				
+				if (testResult.working) {
+					vscode.window.showInformationMessage(
+						'✅ TazaPay RAG Service is working correctly!',
+						'Test Query'
+					).then(async (selection) => {
+						if (selection === 'Test Query') {
+							const testQuery = await vscode.window.showInputBox({
+								prompt: 'Enter a test question for the RAG service',
+								placeHolder: 'How do I create a payment?',
+								ignoreFocusOut: true
+							});
+							
+							if (testQuery) {
+								try {
+									const response = await ragClient.queryRAG(testQuery);
+									const doc = await vscode.workspace.openTextDocument({
+										content: `# RAG Service Test Result\n\n**Query:** ${testQuery}\n\n**Response:**\n${response}`,
+										language: 'markdown'
+									});
+									await vscode.window.showTextDocument(doc);
+								} catch (error) {
+									vscode.window.showErrorMessage(`Test query failed: ${error}`);
+								}
+							}
+						}
+					});
+				} else {
+					vscode.window.showErrorMessage(
+						'❌ TazaPay RAG Service is not responding correctly',
+						'Show Details'
+					).then(selection => {
+						if (selection === 'Show Details') {
+							vscode.window.showInformationMessage(testResult.message, { modal: true });
+						}
+					});
+				}
+			} catch (error) {
+				vscode.window.showErrorMessage(`RAG service test failed: ${error}`);
+			}
+		});
+	});
+
 	context.subscriptions.push(
 		showWelcomeCommand,
 		openCopilotChatCommand,
@@ -486,7 +790,8 @@ I can help with TazaPay's payment and escrow services. Try asking about:
 		listToolsCommand,
 		executeToolCommand,
 		askQuestionCommand,
-		generateCodeCommand
+		generateCodeCommand,
+		testRAGCommand
 	);
 }
 

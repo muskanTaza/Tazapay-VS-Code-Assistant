@@ -79,14 +79,9 @@ export function activate(context: vscode.ExtensionContext) {
 			
 			// Handle help requests or empty messages with a welcome message
 			if (!userMessage || userMessage.toLowerCase() === 'help') {
-				response = `# 🚀 TazaPay Assistant
-
-## ${isAgentMode ? '🔧 Agent Mode - Using MCP Tools' : '📚 Regular Mode - Using RAG Documentation'}
-
+				response = `
 ${isAgentMode ? `
-**Agent Mode Active** - I can execute TazaPay operations for you!
-
-### 🛠️ Try these:
+I can execute TazaPay operations for you!
 - "Can you check my Tazapay balance"
 - "Create a payment for $100 USD"  
 - "Check payment status ABC123"
@@ -95,9 +90,7 @@ ${isAgentMode ? `
 ### Available Tools:
 ${(await getMCPToolsList()) || 'Loading tools...'}
 ` : `
-**Regular Mode** - I'll search TazaPay documentation for you!
-
-### 💡 Try asking:
+I'll search TazaPay documentation for you!
 - "Can you check my Tazapay balance" (will search docs about balance checking)
 - "How do I create a payment?"
 - "What webhook events are available?"
@@ -137,32 +130,25 @@ ${(await getMCPToolsList()) || 'Loading tools...'}
 				}
 			}
 			
-			// Add mode indicator for debugging
-			if (isAgentMode) {
-				response += '\n\n---\n*🔧 Agent mode - using MCP tools*';
-			} else {
-				response += '\n\n---\n*📚 Regular mode - using RAG documentation search*';
-			}
+			// // Add mode indicator for debugging
+			// if (isAgentMode) {
+			// 	response += '\n\n---\n*🔧 Agent mode - using MCP tools*';
+			// } else {
+			// 	response += '\n\n---\n*📚 Regular mode - using RAG documentation search*';
+			// }
 
 			// Stream the response as markdown to the chat
 			stream.markdown(response);
 			
 			// Add contextual follow-up buttons based on the user's question
-			if (userMessage.toLowerCase().includes('payment') || userMessage.toLowerCase().includes('api')) {
-				stream.button({
-					command: 'tazapay.generateCode',
-					title: '📝 Generate Code Example',
-					arguments: []
-				});
-			}
+			// if (userMessage.toLowerCase().includes('payment') || userMessage.toLowerCase().includes('api')) {
+			// 	stream.button({
+			// 		command: 'tazapay.generateCode',
+			// 		title: '📝 Generate Code Example',
+			// 		arguments: []
+			// 	});
+			// }
 			
-			if (userMessage.toLowerCase().includes('webhook')) {
-				stream.button({
-					command: 'tazapay.listTools',
-					title: '🔗 View Webhook Tools',
-					arguments: []
-				});
-			}
 			
 		} catch (error) {
 			console.error('Chat participant error:', error);
@@ -360,6 +346,7 @@ ${toolResponse}
 				parameters.limit = 10; // Default
 			}
 		}
+
 
 		return parameters;
 	}
